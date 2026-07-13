@@ -1,0 +1,17 @@
+# dasher-svc 的 Service —— NodePort 暴露，方便在 WSL2/k3d 单机环境里直接 curl。
+# 生产里更常用 Ingress/LoadBalancer，这里用 NodePort 保持单机 k3d 简单（跟 Jenkins 大实验的 bookapp 一致风格）。
+# 具体端口号（30081/30082）由 dev/prod overlay 各自 patch，这里只放一个占位值。
+apiVersion: v1
+kind: Service
+metadata:
+  name: dasher-svc
+  labels:
+    app: dasher-svc
+spec:
+  type: NodePort
+  selector:
+    app: dasher-svc
+  ports:
+    - port: 80
+      targetPort: 8000
+      nodePort: 30080     # 占位；overlays/dev 覆盖成 30081，overlays/prod 覆盖成 30082

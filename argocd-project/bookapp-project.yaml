@@ -1,0 +1,53 @@
+# AppProject —— 把 dasher-svc 的部署权限收紧到"只能用这一个 gitops 配置仓库当源、
+# 只能部署到 dasher-dev/dasher-prod 两个命名空间"（对应 ArgoCD Basics 的 App projects 一课）。
+# 不建 Project、直接用 default 项目的话，default 对所有 Git 源、所有集群/命名空间全放行，
+# 生产环境这么用等于没做权限隔离，面试会被问到"AppProject 解决什么问题"就是这个。
+#
+# 【命名说明，偏离点】：题目给的文件名是 bookapp-project.yaml（沿用 Jenkins 大实验 bookapp 的
+# 历史命名），但这门课/这个大实验的应用叫 dasher-svc，所以本文件内部 metadata.name 用
+# dasher-project，避免把 AppProject 的实际用途搞混；两个子 Application 的 spec.project
+# 都引用 "dasher-project" 这个名字。文件名保持 bookapp-project.yaml 不变，方便跟需求对齐。
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: dasher-project
+  namespace: argocd
+spec:
+  description: >-
+    Task-Dash DevOps Team 的 dasher-svc 项目（呼应课程 Introduction 里 "Meeting with
+    Task-Dash DevOps Team" 的项目背景故事）—— 只放行 dasher-dev / dasher-prod 两个命名空间，
+    只认 gitops-repo 这一个配置仓库当 Git 源。
+
+  sourceRepos:
+    - https://github.com/qifawu/dasher-gitops.git   # 只能从这一个仓库拉 Application 源
+
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: dasher-dev
+    - server: https://kubernetes.default.svc
+      namespace: dasher-prod
+
+  # 集群级资源默认一律不放行；Namespace 是唯一例外——因为两个子 Application 都开了
+  # CreateNamespace=true，ArgoCD 需要有权限先把 dasher-dev/dasher-prod 这两个命名空间建出来。
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+
+  # 命名空间级资源只放行这个 Deployment 真正需要的几种，别的（比如 Secret、RBAC 对象）不许碰，
+  # 缩小"万一 Application 定义被改坏"时的爆炸半径。
+  namespaceResourceWhitelist:
+    - group: "apps"
+      kind: Deployment
+    - group: ""
+      kind: Service
+    - group: ""
+      kind: ConfigMap
+
+  roles:
+    # 只读角色示例；真正的用户/组绑定在 rbac/argocd-rbac-cm-patch.yaml 里配（User Management/RBAC 章节）。
+    - name: viewer
+      description: "dasher-project 只读角色 —— 能看 Application 状态，不能 sync/delete"
+      policies:
+        - p, proj:dasher-project:viewer, applications, get, dasher-project/*, allow
+      groups:
+        - dasher-readonly-team

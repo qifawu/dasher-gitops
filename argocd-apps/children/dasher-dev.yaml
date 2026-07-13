@@ -1,0 +1,28 @@
+# dev 子 Application —— 全自动同步（对应 ArgoCD Intermediate 的 Types of Sync Strategies /
+# Application Synchronization Options 两课）。
+#
+# automated.selfHeal=true：有人在集群里手动 kubectl edit 改了什么，ArgoCD 会自动把它纠正回
+#   Git 里声明的样子（本实验的"配置漂移演示"就是拿这个跟 prod 的手动 sync 做对比）。
+# automated.prune=true：overlays/dev 里删掉的资源，集群里也跟着删，避免"野资源"越攒越多。
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dasher-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: dasher-project        # 对应 argocd-project/bookapp-project.yaml 里定义的 AppProject
+  source:
+    repoURL: https://github.com/qifawu/dasher-gitops.git
+    targetRevision: HEAD
+    path: overlays/dev           # 指向 gitops-repo/overlays/dev 在这个仓库里对应的路径
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dasher-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true     # dasher-dev 命名空间不存在也没关系，ArgoCD 自己建

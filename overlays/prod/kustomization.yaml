@@ -1,0 +1,30 @@
+# prod 环境 overlay —— 2 副本、独立命名空间、NodePort 30082。
+#
+# 跟 dev 唯一的流程差异不在这份文件里，而在 argocd-apps/children/dasher-prod.yaml 的 syncPolicy：
+# dev 是 automated(selfHeal+prune) 全自动；prod 故意不开 automated，必须手动点 Sync（或
+# `argocd app sync dasher-prod`）才会真正把这里的改动落到集群 —— 这是"生产环境要有把关人"
+# 在 GitOps 世界里的写法，跟 GitHub Actions 大实验里 prod environment 手动审批门是同一个理念的两种实现。
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: dasher-prod         # 对应 argocd-apps/children/dasher-prod.yaml 的 destination.namespace
+
+resources:
+  - ../../base
+
+replicas:
+  - name: dasher-svc
+    count: 2                   # prod 至少 2 副本，滚动更新时才有别的 Pod 顶上
+
+images:
+  - name: ghcr.io/qifawu/dasher-svc
+    newTag: "1-argocd01"        # 占位 tag；prod 的 tag 一般是从 dev 验证过的版本"晋升"上来的，独立维护
+
+patches:
+  - target:
+      kind: Service
+      name: dasher-svc
+    patch: |-
+      - op: replace
+        path: /spec/ports/0/nodePort
+        value: 30082

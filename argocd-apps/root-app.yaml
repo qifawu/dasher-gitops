@@ -1,0 +1,31 @@
+# App-of-Apps 根 Application（对应课程 ArgoCD Intermediate 的 "App of Apps" +
+# "Declarative Setup App of Apps" 两课）。
+#
+# 只 `kubectl apply -f` 这一份文件一次，ArgoCD 就会自己去读 argocd-apps/children/ 目录下的
+# 每一份 Application 定义，自动创建出 dasher-dev、dasher-prod 两个子 Application —— 以后要加
+# 新环境（比如 staging），只要在 children/ 目录里加一个 YAML 提交推送，根 Application 的
+# selfHeal 会自动发现并创建，不用再手动 kubectl apply 第二次。这就是"用 ArgoCD 管理 ArgoCD
+# 自己"的经典玩法，也是本实验里"声明式"的落地点。
+#
+# source.repoURL 指向你新建的那个独立 gitops 配置仓库（跟 gitops-repo/ 目录一起推上去的同一个仓库，
+# argocd-apps/、argocd-project/ 这两个目录也建议原样推进去，保持路径不变）。
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dasher-root
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io   # 删根 App 时级联删掉它创建的子 Application，别留孤儿
+spec:
+  project: default              # 根 App 自己管理的是"Application"这种 CRD，用 default 项目即可
+  source:
+    repoURL: https://github.com/qifawu/dasher-gitops.git   # 换成你新建的 gitops 配置仓库地址
+    targetRevision: HEAD
+    path: argocd-apps/children
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true                # children/ 目录里删掉哪个 YAML，对应子 Application 也跟着被删
+      selfHeal: true              # 有人手滑在集群里改了/删了子 Application，自动纠正回 Git 里的状态

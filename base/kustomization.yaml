@@ -1,0 +1,12 @@
+# Kustomize base —— dev/prod 两个 overlay 共用的"底版"，本身不带 namespace、不带真实镜像 tag、
+# 不带真实副本数，这些差异都留给 overlay 去 patch。这种 base+overlay 分层本身就是面试常问的
+# "同一份应用怎么管理多环境差异"标准答案（对应 ArgoCD Intermediate 里部署方式的铺垫）。
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - deployment.yaml
+  - service.yaml
+
+commonLabels:
+  app: dasher-svc

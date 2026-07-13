@@ -1,0 +1,28 @@
+# prod 子 Application —— 故意不写 syncPolicy.automated，只能靠人手动 sync
+# （ArgoCD UI 点 Synchronize，或 `argocd app sync dasher-prod`）。
+#
+# 这是本实验的核心对比点之一：dev 全自动 selfHeal+prune，prod 必须人工点一下才会把 Git 里的
+# 改动（包括镜像 tag 升级）真正落到集群 —— 跟 GitHub Actions 大实验里 prod environment 需要
+# 人工审批的 Gate 是同一个"生产环境要有把关人"理念，只是这里的把关动作发生在 ArgoCD 这一侧、
+# 用的是 Sync 按钮而不是 Approve 按钮。
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dasher-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: dasher-project
+  source:
+    repoURL: https://github.com/qifawu/dasher-gitops.git
+    targetRevision: HEAD
+    path: overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dasher-prod
+  syncPolicy:
+    # 没有 automated 块 = 手动同步。ArgoCD 仍然会持续对比 Git 和集群、把状态标成
+    # OutOfSync，只是不会自己动手 apply —— "看得见偏差，但要人点头才生效"。
+    syncOptions:
+      - CreateNamespace=true

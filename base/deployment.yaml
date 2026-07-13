@@ -1,0 +1,57 @@
+# dasher-svc 的 Kubernetes Deployment —— GitOps「拉」模式的部署目标。
+#
+# 这份文件本身从不由人手动 `kubectl apply`；它只活在 Git 里，
+# 集群里的真实状态由 ArgoCD 的协调循环（reconciliation loop）负责去"拉"过来对齐。
+# 这正是本实验要示范的核心对比：Jenkins/GitHub Actions 那两个大实验里 CI 是"推"（主动
+# kubectl apply / 或者只改配置仓库），这里 ArgoCD 是"拉"（自己盯 Git、自己同步）。
+#
+# 关键面试点：
+#   - readiness/liveness 探针 —— ArgoCD 判断 Application health（Healthy/Progressing/Degraded）
+#     的依据之一就是这两个探针 + Deployment 的 rollout 状态（对应 ArgoCD Intermediate 的
+#     Application health / Application Custom Health Check 两课）。
+#   - resources requests/limits —— 生产必备，避免一个 Pod 把节点资源吃光。
+#   - image 只写占位 tag —— 真实 tag 由 overlays/dev、overlays/prod 各自的 `images:` transformer
+#     决定；GitHub Actions 大实验的 CI 就是靠改那个字段来"发布新版本"，本文件永远不用改。
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dasher-svc
+  labels:
+    app: dasher-svc
+spec:
+  replicas: 1                      # 占位；dev=1/prod=2 由 overlay 的 replicas: transformer 覆盖
+  selector:
+    matchLabels:
+      app: dasher-svc
+  template:
+    metadata:
+      labels:
+        app: dasher-svc
+    spec:
+      containers:
+        - name: dasher-svc
+          # 占位镜像：overlay 的 images: transformer 按 name 精确匹配这一整段（不含 tag）后换成真实 tag。
+          # qifawu 换成实际的 GitHub 用户名/组织名 —— 要跟 GitHub Actions 大实验里构建推送的镜像地址一致。
+          image: ghcr.io/qifawu/dasher-svc:placeholder
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          readinessProbe:          # 就绪探针没过，Service 不转发流量给这个 Pod
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:           # 存活探针没过，kubelet 重启这个容器
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "32Mi"
+            limits:
+              cpu: "250m"
+              memory: "128Mi"
