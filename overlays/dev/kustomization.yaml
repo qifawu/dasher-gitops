@@ -6,23 +6,19 @@
 # 这就是本实验 lab-ops.md 开头讲的"CI 只管改配置仓库，不碰集群"的落地点。
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-
-namespace: dasher-dev          # 对应 argocd-apps/children/dasher-dev.yaml 的 destination.namespace
-
+namespace: dasher-dev # 对应 argocd-apps/children/dasher-dev.yaml 的 destination.namespace
 resources:
   - ../../base
-
 replicas:
   - name: dasher-svc
-    count: 1                   # dev 单副本，够验证功能就行，不追求高可用
-
+    count: 1 # dev 单副本，够验证功能就行，不追求高可用
 images:
   # name 必须和 base/deployment.yaml 里 image 字段的仓库部分逐字一致，kustomize 才认得要换哪一个。
   # newTag 就是 GitHub Actions composite action 每次发布会自动改写的字段
   # （格式约定：<run_number>-<git短7位sha>，例如 "42-a1b2c3d"）。
   - name: ghcr.io/qifawu/dasher-svc
-    newTag: "1-argocd01"        # 占位 tag；首次真实发布前手动改一次，之后交给 CI 维护
-
+    newTag: "2-5241a00" # 占位 tag；首次真实发布前手动改一次，之后交给 CI 维护
+    newName: ghcr.io/qifawu/dasher-svc
 patches:
   # 只改 NodePort 这一个字段，用 JSON6902 精确 patch，不用整份重写 service.yaml。
   - target:
