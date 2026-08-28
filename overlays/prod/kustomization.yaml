@@ -14,7 +14,7 @@ replicas:
     count: 2 # prod 至少 2 副本，滚动更新时才有别的 Pod 顶上
 images:
   - name: ghcr.io/qifawu/dasher-svc
-    newTag: "2-5241a00" # 占位 tag；prod 的 tag 一般是从 dev 验证过的版本"晋升"上来的，独立维护
+    newTag: "4-d79f5dc" # 占位 tag；prod 的 tag 一般是从 dev 验证过的版本"晋升"上来的，独立维护
     newName: ghcr.io/qifawu/dasher-svc
 patches:
   - target:
