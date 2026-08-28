@@ -17,7 +17,7 @@ images:
   # newTag 就是 GitHub Actions composite action 每次发布会自动改写的字段
   # （格式约定：<run_number>-<git短7位sha>，例如 "42-a1b2c3d"）。
   - name: ghcr.io/qifawu/dasher-svc
-    newTag: "7-017e174" # 占位 tag；首次真实发布前手动改一次，之后交给 CI 维护
+    newTag: "8-f34d506" # 占位 tag；首次真实发布前手动改一次，之后交给 CI 维护
     newName: ghcr.io/qifawu/dasher-svc
 patches:
   # 只改 NodePort 这一个字段，用 JSON6902 精确 patch，不用整份重写 service.yaml。
